@@ -1,0 +1,60 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  * { box-sizing: border-box; }
+  body {
+    background-color: #0a0a14;
+    color: #e2e2f0;
+    font-family: 'Inter', system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+  }
+  ::selection { background: rgba(233, 69, 96, 0.3); }
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: #12122a; }
+  ::-webkit-scrollbar-thumb { background: #252550; border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: #3d3d70; }
+}
+
+@layer components {
+  .btn-primary {
+    @apply px-5 py-2.5 rounded-xl bg-brand-red hover:bg-brand-red-dim text-white font-semibold
+           transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-secondary {
+    @apply px-5 py-2.5 rounded-xl bg-dark-card border border-dark-border hover:border-brand-purple text-white font-medium
+           transition-all duration-200 active:scale-95 disabled:opacity-40 disabled:cursor-not-allowed;
+  }
+  .btn-ghost {
+    @apply px-4 py-2 rounded-lg text-gray-400 hover:text-white hover:bg-dark-hover transition-all duration-150;
+  }
+  .card {
+    @apply bg-dark-card border border-dark-border rounded-2xl;
+  }
+  .input-field {
+    @apply w-full bg-dark-surface border border-dark-border rounded-xl px-4 py-3 text-white
+           placeholder-gray-600 outline-none transition-all duration-200
+           focus:border-brand-purple focus:ring-1 focus:ring-brand-purple/30;
+  }
+  .digit-box {
+    @apply w-10 h-10 flex items-center justify-center rounded-lg bg-dark-surface
+           border border-dark-border font-mono font-bold text-lg text-white;
+  }
+  .badge-cows {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold
+           bg-brand-green/10 text-brand-green border border-brand-green/20;
+  }
+  .badge-bulls {
+    @apply inline-flex items-center gap-1 px-3 py-1 rounded-full text-sm font-bold
+           bg-brand-amber/10 text-brand-amber border border-brand-amber/20;
+  }
+  .text-gradient {
+    background: linear-gradient(135deg, #e94560 0%, #7c4dff 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+  .glow-red { box-shadow: 0 0 30px rgba(233, 69, 96, 0.15); }
+  .glow-purple { box-shadow: 0 0 30px rgba(124, 77, 255, 0.15); }
+}
