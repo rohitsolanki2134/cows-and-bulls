@@ -17,7 +17,9 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    const s = io(window.location.origin, {
+    // In production, connect to the Railway backend; in dev, use same origin (Vite proxy)
+    const serverUrl = import.meta.env.VITE_API_URL ?? window.location.origin;
+    const s = io(serverUrl, {
       auth: { token },
       transports: ['websocket', 'polling'],
     });

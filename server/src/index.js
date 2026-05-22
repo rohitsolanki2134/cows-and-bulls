@@ -12,13 +12,25 @@ const { setupSocket } = require('./socket/gameSocket');
 const app = express();
 const server = http.createServer(app);
 
-const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:5173';
+// CLIENT_URL can be a comma-separated list of allowed origins
+const allowedOrigins = (process.env.CLIENT_URL || 'http://localhost:5173')
+  .split(',')
+  .map(s => s.trim());
 
-const io = new Server(server, {
-  cors: { origin: CLIENT_URL, credentials: true },
-});
+const corsOptions = {
+  origin: (origin, cb) => {
+    // Allow no-origin requests (curl, mobile) and any *.vercel.app preview deploy
+    if (!origin || allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+      cb(null, true);
+    } else {
+      cb(new Error(`CORS: origin ${origin} not allowed`));
+    }
+  },
+  credentials: true,
+};
 
-app.use(cors({ origin: CLIENT_URL, credentials: true }));
+const io = new Server(server, { cors: corsOptions });
+app.use(cors(corsOptions));
 app.use(express.json());
 
 app.use('/api/auth', authRoutes);
