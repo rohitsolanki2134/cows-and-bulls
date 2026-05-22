@@ -17,6 +17,9 @@ export default function GuessHistory({ guesses, digits, label, highlightLast }: 
     );
   }
 
+  // Newest guess at the top
+  const displayed = [...guesses].reverse();
+
   return (
     <div>
       {label && <h3 className="text-xs font-semibold uppercase tracking-wider text-gray-500 mb-3">{label}</h3>}
@@ -31,15 +34,15 @@ export default function GuessHistory({ guesses, digits, label, highlightLast }: 
             </tr>
           </thead>
           <tbody className="divide-y divide-dark-border">
-            {guesses.map((g, idx) => {
-              const isLast = highlightLast && idx === guesses.length - 1;
+            {displayed.map((g, idx) => {
+              const isNewest = highlightLast && idx === 0;
               const isWin = g.cows === digits;
               return (
                 <tr
-                  key={g.id ?? idx}
+                  key={g.id ?? g.attemptNumber}
                   className={`transition-colors duration-150 ${
-                    isWin ? 'bg-brand-green/5' : isLast ? 'bg-dark-hover' : 'hover:bg-dark-hover/50'
-                  } ${idx === guesses.length - 1 ? 'animate-slide-up' : ''}`}
+                    isWin ? 'bg-brand-green/5' : isNewest ? 'bg-dark-hover' : 'hover:bg-dark-hover/50'
+                  } ${idx === 0 ? 'animate-slide-up' : ''}`}
                 >
                   <td className="py-2.5 pl-2 text-gray-500 font-mono text-xs">{g.attemptNumber}</td>
                   <td className="py-2.5">
