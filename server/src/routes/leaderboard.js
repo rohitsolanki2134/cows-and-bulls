@@ -20,6 +20,7 @@ router.get('/', (req, res) => {
     JOIN games g ON g.id = gp.game_id
     JOIN users u ON u.id = gp.user_id
     WHERE gp.won = 1 AND g.type = 'single'
+      AND u.password_hash != ''
   `;
   const params = [];
   if (mode && mode !== 'all') {
@@ -36,7 +37,7 @@ router.get('/', (req, res) => {
 router.get('/stats', (req, res) => {
   res.json({
     totalGames: db.prepare("SELECT COUNT(*) as c FROM games WHERE type = 'single'").get().c,
-    totalPlayers: db.prepare('SELECT COUNT(*) as c FROM users').get().c,
+    totalPlayers: db.prepare("SELECT COUNT(*) as c FROM users WHERE password_hash != ''").get().c,
     gamesWon: db.prepare('SELECT COUNT(*) as c FROM game_players WHERE won = 1').get().c,
     avgAttempts: db.prepare("SELECT ROUND(AVG(attempts), 1) as a FROM game_players WHERE won = 1").get().a || 0,
   });

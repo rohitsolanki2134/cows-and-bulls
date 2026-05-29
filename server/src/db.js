@@ -14,6 +14,8 @@ db.exec(`
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     username TEXT UNIQUE NOT NULL,
     password_hash TEXT NOT NULL DEFAULT '',
+    email TEXT,
+    full_name TEXT,
     created_at INTEGER DEFAULT (strftime('%s', 'now'))
   );
 
@@ -55,5 +57,11 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_guesses_player ON guesses(game_player_id);
   CREATE INDEX IF NOT EXISTS idx_games_room ON games(room_code);
 `);
+
+// Safe migrations for existing databases (ALTER TABLE ADD COLUMN fails silently if already present)
+try { db.exec('ALTER TABLE users ADD COLUMN email TEXT'); } catch {}
+try { db.exec('ALTER TABLE users ADD COLUMN full_name TEXT'); } catch {}
+// Unique index on email, ignoring NULLs (guests have no email)
+db.exec('CREATE UNIQUE INDEX IF NOT EXISTS idx_users_email ON users(email) WHERE email IS NOT NULL');
 
 module.exports = db;

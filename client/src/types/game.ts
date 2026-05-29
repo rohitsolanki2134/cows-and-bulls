@@ -41,6 +41,8 @@ export interface LeaderboardEntry {
 export interface User {
   id: number;
   username: string;
+  email?: string;
+  fullName?: string;
 }
 
 export type MultiplayerPhase =
