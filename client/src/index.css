@@ -4,17 +4,17 @@
 
 /* ─── Theme tokens (light / dark via OS preference) ──────────────────────── */
 :root {
-  --bg-page:    #dde6f0;
-  --bg-card:    #ffffff;
-  --bg-surface: #edf2f7;
-  --bg-input:   #f8fafc;
-  --bg-hover:   #e4ecf4;
-  --border:     #b0c4d8;
-  --text-1:     #0f172a;
-  --text-2:     #334155;
-  --text-3:     #4e6577;
-  --shadow:     0 2px 6px rgba(14,30,50,0.09), 0 8px 24px rgba(14,30,50,0.08);
-  --navbar-bg:  rgba(255,255,255,0.93);
+  --bg-page:    #f5f8fc;   /* very light — near-white page */
+  --bg-card:    #c8d8ea;   /* darker card sits visibly on top of the page */
+  --bg-surface: #b8cce0;   /* slightly darker for inner surfaces */
+  --bg-input:   #dce8f2;   /* input fields — lighter than card */
+  --bg-hover:   #afc4d8;   /* hover state */
+  --border:     #8aaac5;   /* visible border */
+  --text-1:     #0c1e30;   /* primary — near-black navy */
+  --text-2:     #1e3a52;   /* secondary */
+  --text-3:     #375d7a;   /* muted */
+  --shadow:     0 2px 6px rgba(10,25,45,0.12), 0 8px 20px rgba(10,25,45,0.08);
+  --navbar-bg:  rgba(245,248,252,0.95);
 }
 
 @media (prefers-color-scheme: dark) {
