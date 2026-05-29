@@ -58,20 +58,19 @@
   .glow-red { box-shadow: 0 0 30px rgba(233, 69, 96, 0.15); }
   .glow-purple { box-shadow: 0 0 30px rgba(124, 77, 255, 0.15); }
 
-  /* Cards use dark text — override white text inside cards */
-  .card .text-white { color: #1e293b; }
-  .card .text-gray-300 { color: #475569; }
-  .card .text-gray-400 { color: #64748b; }
-  .card .text-gray-500 { color: #64748b; }
-  .card .text-gray-600 { color: #475569; }
-  /* Exception: keep white text in buttons and colored spans */
-  .card .btn-primary .text-white,
-  .card .btn-secondary .text-white { color: #ffffff; }
-
   /* Multiplayer panel distinction */
   .my-guesses-panel { @apply border-l-4 border-blue-400; }
   .opp-guesses-panel { @apply border-l-4 border-purple-400; }
 }
+
+/* Cards use dark text — overrides live outside @layer to avoid Tailwind circular-dep */
+.card .text-white { color: #1e293b; }
+.card .text-gray-300 { color: #475569; }
+.card .text-gray-400 { color: #64748b; }
+.card .text-gray-500 { color: #64748b; }
+.card .text-gray-600 { color: #475569; }
+/* Restore white text inside primary buttons even when inside a card */
+.card .btn-primary { color: #ffffff; }
 
 .my-guesses-table thead tr th { color: #1d4ed8; }
 .opp-guesses-table thead tr th { color: #7e22ce; }
