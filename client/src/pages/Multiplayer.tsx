@@ -43,6 +43,34 @@ export default function Multiplayer() {
     setTimeout(() => setNotification(''), 3000);
   };
 
+  // Session persistence: save room info on phase/roomCode changes
+  useEffect(() => {
+    if (state.roomCode && state.phase !== 'lobby') {
+      sessionStorage.setItem('mp_room', JSON.stringify({
+        roomCode: state.roomCode,
+        gameId: state.gameId,
+        mode: state.mode,
+        config: state.config,
+      }));
+    } else if (state.phase === 'lobby') {
+      sessionStorage.removeItem('mp_room');
+    }
+  }, [state.roomCode, state.phase]);
+
+  // Auto-rejoin on socket connect/reconnect
+  useEffect(() => {
+    if (!socket) return;
+    const tryRejoin = () => {
+      const saved = sessionStorage.getItem('mp_room');
+      if (saved && state.phase === 'lobby') {
+        const { roomCode } = JSON.parse(saved);
+        socket.emit('room:rejoin', { roomCode });
+      }
+    };
+    socket.on('connect', tryRejoin);
+    return () => { socket.off('connect', tryRejoin); };
+  }, [socket, state.phase]);
+
   useEffect(() => {
     if (!socket) return;
 
@@ -121,6 +149,31 @@ export default function Multiplayer() {
       setState(prev => ({ ...prev, phase: 'lobby' }));
     });
 
+    // Reconnection handlers
+    socket.on('room:rejoined', (data) => {
+      setState(prev => ({
+        ...prev,
+        phase: data.phase,
+        roomCode: data.roomCode,
+        gameId: data.gameId,
+        mode: data.mode,
+        config: data.config,
+        players: data.players,
+        currentTurn: data.currentTurn,
+        myGuesses: data.myGuesses,
+        oppGuesses: data.oppGuesses,
+      }));
+      notify('Reconnected to room!');
+    });
+
+    socket.on('room:player_disconnected', ({ username }: { username: string }) => {
+      notify(`${username} disconnected — waiting for them to reconnect (60s)...`);
+    });
+
+    socket.on('room:player_reconnected', ({ username }: { username: string }) => {
+      notify(`${username} reconnected!`);
+    });
+
     return () => {
       socket.off('room:created');
       socket.off('room:joined');
@@ -132,6 +185,9 @@ export default function Multiplayer() {
       socket.off('game:guess_result');
       socket.off('game:over');
       socket.off('room:player_left');
+      socket.off('room:rejoined');
+      socket.off('room:player_disconnected');
+      socket.off('room:player_reconnected');
     };
   }, [socket, user]);
 
@@ -161,6 +217,7 @@ export default function Multiplayer() {
 
   const leaveRoom = () => {
     socket?.emit('room:leave');
+    sessionStorage.removeItem('mp_room');
     setState(EMPTY_STATE);
   };
 
@@ -177,8 +234,8 @@ export default function Multiplayer() {
     return (
       <div className="max-w-3xl mx-auto px-4 py-10 space-y-8">
         <div>
-          <h1 className="text-3xl font-bold mb-1">Multiplayer</h1>
-          <p className="text-gray-500">Challenge a friend in real-time 1v1.</p>
+          <h1 className="text-2xl sm:text-3xl font-bold mb-1">Multiplayer</h1>
+          <p className="text-slate-500">Challenge a friend in real-time 1v1.</p>
         </div>
         {notification && (
           <div className="bg-brand-red/10 border border-brand-red/20 text-brand-red px-4 py-2 rounded-xl text-sm animate-slide-up">
@@ -186,20 +243,20 @@ export default function Multiplayer() {
           </div>
         )}
 
-        <div className="grid sm:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
           {/* Create */}
           <div className="card p-6 space-y-4">
-            <h2 className="font-semibold text-lg">Create Room</h2>
-            <p className="text-gray-400 text-sm">Pick a mode and share the code with a friend.</p>
+            <h2 className="font-semibold text-lg text-slate-800">Create Room</h2>
+            <p className="text-slate-500 text-sm">Pick a mode and share the code with a friend.</p>
             <div className="space-y-3">
               {(['noob', 'amateur', 'pro'] as GameMode[]).map(m => (
                 <button
                   key={m}
                   onClick={() => setMode(m)}
-                  className={`w-full text-left px-4 py-2.5 rounded-xl border transition-all text-sm font-medium ${
+                  className={`w-full text-left px-4 py-2.5 rounded-xl border transition-all text-sm font-medium min-h-[44px] ${
                     mode === m
-                      ? 'border-brand-purple bg-brand-purple/10 text-white'
-                      : 'border-dark-border text-gray-400 hover:border-gray-500'
+                      ? 'border-brand-purple bg-brand-purple/10 text-brand-purple'
+                      : 'border-slate-200 text-slate-600 hover:border-slate-400'
                   }`}
                 >
                   {m === 'noob' ? '🌱 Noob — 4 digits' : m === 'amateur' ? '⚡ Amateur — 5 digits' : '🔥 Pro — configurable'}
@@ -213,8 +270,8 @@ export default function Multiplayer() {
 
           {/* Join */}
           <div className="card p-6 space-y-4">
-            <h2 className="font-semibold text-lg">Join Room</h2>
-            <p className="text-gray-400 text-sm">Enter the 6-character code from your friend.</p>
+            <h2 className="font-semibold text-lg text-slate-800">Join Room</h2>
+            <p className="text-slate-500 text-sm">Enter the 6-character code from your friend.</p>
             <input
               type="text"
               value={joinCode}
@@ -238,18 +295,18 @@ export default function Multiplayer() {
       <div className="max-w-md mx-auto px-4 py-16 text-center space-y-6">
         <div className="text-5xl">🔗</div>
         <h2 className="text-2xl font-bold">Room Created!</h2>
-        <p className="text-gray-400">Share this code with your opponent:</p>
+        <p className="text-slate-500">Share this code with your opponent:</p>
         <div className="card p-6">
-          <div className="font-mono text-4xl font-bold tracking-[0.3em] text-white mb-4">{state.roomCode}</div>
+          <div className="font-mono text-4xl font-bold tracking-[0.3em] text-slate-800 mb-4">{state.roomCode}</div>
           <button onClick={copyCode} className="btn-secondary text-sm">
             {copied ? '✓ Copied!' : 'Copy Code'}
           </button>
         </div>
-        <div className="flex items-center justify-center gap-2 text-sm text-gray-500">
+        <div className="flex items-center justify-center gap-2 text-sm text-slate-500">
           <span className="w-2 h-2 bg-brand-amber rounded-full animate-pulse" />
           Waiting for opponent to join...
         </div>
-        <button onClick={leaveRoom} className="btn-ghost text-sm text-gray-600">Cancel</button>
+        <button onClick={leaveRoom} className="btn-ghost text-sm text-slate-600">Cancel</button>
       </div>
     );
   }
@@ -263,7 +320,7 @@ export default function Multiplayer() {
       <div className="max-w-md mx-auto px-4 py-10 space-y-6">
         <div className="text-center">
           <h2 className="text-2xl font-bold">Set Your Secret</h2>
-          <p className="text-gray-400 text-sm mt-1">
+          <p className="text-slate-500 text-sm mt-1">
             Choose a {state.config.digits}-digit number for your opponent to guess.
           </p>
         </div>
@@ -278,10 +335,10 @@ export default function Multiplayer() {
         <div className="card p-4 flex gap-3">
           {state.players.map(p => (
             <div key={p.userId} className={`flex-1 text-center py-2 rounded-lg ${
-              p.ready ? 'bg-brand-green/10 border border-brand-green/20' : 'bg-dark-surface border border-dark-border'
+              p.ready ? 'bg-brand-green/10 border border-brand-green/20' : 'bg-slate-50 border border-slate-200'
             }`}>
-              <p className="font-semibold text-sm text-white">{p.username}</p>
-              <p className={`text-xs mt-0.5 ${p.ready ? 'text-brand-green' : 'text-gray-500'}`}>
+              <p className="font-semibold text-sm text-slate-800">{p.username}</p>
+              <p className={`text-xs mt-0.5 ${p.ready ? 'text-brand-green' : 'text-slate-500'}`}>
                 {p.ready ? 'Ready' : 'Setting secret...'}
               </p>
             </div>
@@ -293,7 +350,7 @@ export default function Multiplayer() {
             <div className="flex gap-2">
               {Array.from({ length: state.config.digits }).map((_, i) => (
                 <div key={i} className={`flex-1 h-12 flex items-center justify-center rounded-lg border font-mono font-bold text-xl transition-colors ${
-                  secretInput[i] ? 'bg-brand-red/10 border-brand-red text-white' : 'bg-dark-surface border-dark-border text-gray-600'
+                  secretInput[i] ? 'bg-brand-red/10 border-brand-red text-brand-red' : 'bg-slate-50 border-slate-200 text-slate-400'
                 }`}>{secretInput[i] || '·'}</div>
               ))}
             </div>
@@ -307,7 +364,7 @@ export default function Multiplayer() {
               maxLength={state.config.digits}
             />
             {secretError && <p className="text-brand-red text-sm">{secretError}</p>}
-            <p className="text-xs text-gray-600">
+            <p className="text-xs text-slate-500">
               {state.config.allowRepeat ? 'Repeats OK' : 'Unique digits'} ·
               {state.config.allowZero ? ' Can start with 0' : ' No leading zero'}
             </p>
@@ -323,7 +380,7 @@ export default function Multiplayer() {
 
         {allReady && <p className="text-center text-brand-green text-sm animate-pulse">Both ready — starting...</p>}
 
-        <button onClick={leaveRoom} className="btn-ghost w-full text-sm text-gray-600">Leave Room</button>
+        <button onClick={leaveRoom} className="btn-ghost w-full text-sm text-slate-600">Leave Room</button>
       </div>
     );
   }
@@ -334,20 +391,20 @@ export default function Multiplayer() {
     return (
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
         {/* Status bar */}
-        <div className={`flex items-center justify-between px-4 py-3 rounded-xl border ${
-          isMyTurn ? 'bg-brand-purple/10 border-brand-purple/30' : 'bg-dark-card border-dark-border'
+        <div className={`flex flex-wrap items-center justify-between gap-2 px-4 py-3 rounded-xl border ${
+          isMyTurn ? 'bg-brand-purple/10 border-brand-purple/30' : 'bg-white border-slate-200'
         }`}>
           <div className="flex items-center gap-2">
-            <span className={`w-2 h-2 rounded-full ${isMyTurn ? 'bg-brand-green animate-pulse' : 'bg-gray-600'}`} />
+            <span className={`w-2 h-2 rounded-full flex-shrink-0 ${isMyTurn ? 'bg-brand-green animate-pulse' : 'bg-slate-400'}`} />
             <span className="font-semibold text-sm">
               {isMyTurn ? 'Your turn' : `${oppPlayer?.username ?? 'Opponent'}'s turn`}
             </span>
           </div>
-          <div className="text-xs text-gray-500">Room: <span className="text-gray-300 font-mono">{state.roomCode}</span></div>
+          <div className="text-xs text-slate-500">Room: <span className="text-slate-700 font-mono">{state.roomCode}</span></div>
         </div>
 
         {notification && (
-          <div className="bg-dark-card border border-dark-border px-4 py-2 rounded-xl text-sm text-gray-300 animate-slide-up">
+          <div className="bg-white border border-slate-200 px-4 py-2 rounded-xl text-sm text-slate-700 animate-slide-up">
             {notification}
           </div>
         )}
@@ -355,7 +412,7 @@ export default function Multiplayer() {
         {/* Guess input */}
         {isMyTurn && (
           <div className="card p-5">
-            <h3 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-3">
+            <h3 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-3">
               Guess {oppPlayer?.username}'s secret
             </h3>
             <GuessInput
@@ -371,7 +428,7 @@ export default function Multiplayer() {
 
         {!isMyTurn && (
           <div className="card p-5 text-center">
-            <div className="flex items-center justify-center gap-2 text-gray-400">
+            <div className="flex items-center justify-center gap-2 text-slate-500">
               <span className="w-2 h-2 bg-brand-amber rounded-full animate-bounce" />
               <span className="w-2 h-2 bg-brand-amber rounded-full animate-bounce [animation-delay:0.15s]" />
               <span className="w-2 h-2 bg-brand-amber rounded-full animate-bounce [animation-delay:0.3s]" />
@@ -380,26 +437,28 @@ export default function Multiplayer() {
           </div>
         )}
 
-        {/* Guess panels */}
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div className="card p-4">
+        {/* Guess panels — stack on mobile, side by side on sm+ */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="card p-4 my-guesses-panel">
             <GuessHistory
               guesses={state.myGuesses}
               digits={state.config.digits}
               label={`Your Guesses (${state.myGuesses.length})`}
               highlightLast
+              tableClass="my-guesses-table"
             />
           </div>
-          <div className="card p-4">
+          <div className="card p-4 opp-guesses-panel">
             <GuessHistory
               guesses={state.oppGuesses}
               digits={state.config.digits}
               label={`${oppPlayer?.username ?? 'Opponent'}'s Guesses (${state.oppGuesses.length})`}
+              tableClass="opp-guesses-table"
             />
           </div>
         </div>
 
-        <button onClick={leaveRoom} className="btn-ghost text-sm text-gray-600 w-full">Forfeit &amp; Leave</button>
+        <button onClick={leaveRoom} className="btn-ghost text-sm text-slate-600 w-full">Forfeit &amp; Leave</button>
       </div>
     );
   }
@@ -411,14 +470,14 @@ export default function Multiplayer() {
       <div className="max-w-2xl mx-auto px-4 py-10 space-y-6 animate-fade-in">
         <div className={`card p-8 text-center space-y-4 ${iWon ? 'glow-purple' : ''}`}>
           <div className="text-6xl">{iWon ? '🏆' : '💀'}</div>
-          <h2 className="text-3xl font-bold">{iWon ? 'You Won!' : 'You Lost!'}</h2>
-          <p className="text-gray-400">
+          <h2 className="text-2xl sm:text-3xl font-bold">{iWon ? 'You Won!' : 'You Lost!'}</h2>
+          <p className="text-slate-500">
             {iWon
               ? `Cracked it in ${state.winnerAttempts} attempts!`
               : `${state.winner?.username} cracked it in ${state.winnerAttempts} attempts.`}
           </p>
           <div>
-            <p className="text-sm text-gray-500 mb-2">The secret was:</p>
+            <p className="text-sm text-slate-400 mb-2">The secret was:</p>
             <div className="flex justify-center gap-2">
               {state.revealedSecret.split('').map((d, i) => (
                 <span key={i} className={`digit-box text-2xl w-14 h-14 ${
@@ -433,12 +492,12 @@ export default function Multiplayer() {
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-2 gap-4">
-          <div className="card p-4">
-            <GuessHistory guesses={state.myGuesses} digits={state.config.digits} label="Your Guesses" />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="card p-4 my-guesses-panel">
+            <GuessHistory guesses={state.myGuesses} digits={state.config.digits} label="Your Guesses" tableClass="my-guesses-table" />
           </div>
-          <div className="card p-4">
-            <GuessHistory guesses={state.oppGuesses} digits={state.config.digits} label="Opponent's Guesses" />
+          <div className="card p-4 opp-guesses-panel">
+            <GuessHistory guesses={state.oppGuesses} digits={state.config.digits} label="Opponent's Guesses" tableClass="opp-guesses-table" />
           </div>
         </div>
       </div>

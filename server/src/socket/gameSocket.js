@@ -101,6 +101,50 @@ function setupSocket(io) {
       });
     });
 
+    socket.on('room:rejoin', ({ roomCode } = {}) => {
+      const room = rooms.get(roomCode);
+      if (!room) return socket.emit('room:error', { message: 'Room not found or expired' });
+
+      const player = room.players.find(p => p.userId === socket.user.id);
+      if (!player) return socket.emit('room:error', { message: 'You were not in this room' });
+
+      // Update socket reference
+      player.socketId = socket.id;
+      player.disconnectedAt = null;
+      socket.join(roomCode);
+      socket.roomCode = roomCode;
+
+      // Load guesses from DB
+      const myGuesses = db.prepare(
+        'SELECT guess, cows, bulls, attempt_number FROM guesses WHERE game_player_id = ? ORDER BY attempt_number'
+      ).all(player.gpId).map(g => ({ guess: g.guess, cows: g.cows, bulls: g.bulls, attemptNumber: g.attempt_number }));
+
+      const opp = room.players.find(p => p.userId !== socket.user.id);
+      const oppGuesses = opp ? db.prepare(
+        'SELECT guess, cows, bulls, attempt_number FROM guesses WHERE game_player_id = ? ORDER BY attempt_number'
+      ).all(opp.gpId).map(g => ({ guess: g.guess, cows: g.cows, bulls: g.bulls, attemptNumber: g.attempt_number })) : [];
+
+      const phase = room.started ? 'playing'
+        : (player.ready ? 'waiting_opponent' : 'set_secret');
+
+      socket.emit('room:rejoined', {
+        roomCode,
+        gameId: room.gameId,
+        mode: room.mode,
+        config: room.config,
+        players: room.players.map(p => ({ userId: p.userId, username: p.username, ready: p.ready })),
+        phase,
+        currentTurn: room.currentTurn,
+        myGuesses,
+        oppGuesses,
+      });
+
+      socket.to(roomCode).emit('room:player_reconnected', {
+        userId: socket.user.id,
+        username: socket.user.username,
+      });
+    });
+
     socket.on('game:set_secret', ({ roomCode, secret } = {}) => {
       const room = rooms.get(roomCode);
       if (!room) return socket.emit('game:error', { message: 'Room not found' });
@@ -187,24 +231,47 @@ function setupSocket(io) {
       }
     });
 
-    socket.on('room:leave', () => handleLeave(socket, io));
-    socket.on('disconnect', () => handleLeave(socket, io));
+    socket.on('room:leave', () => handleLeave(socket, io, true));
+    socket.on('disconnect', () => handleLeave(socket, io, false));
   });
 }
 
-function handleLeave(socket, io) {
+function handleLeave(socket, io, isExplicitLeave = false) {
   const roomCode = socket.roomCode;
   if (!roomCode) return;
   const room = rooms.get(roomCode);
-  if (room) {
-    io.to(roomCode).emit('room:player_left', {
+  if (!room) return;
+
+  if (!isExplicitLeave && room.started) {
+    // Grace period: mark disconnected, don't delete room yet
+    const player = room.players.find(p => p.userId === socket.user.id);
+    if (player) {
+      player.socketId = null;
+      player.disconnectedAt = Date.now();
+    }
+    io.to(roomCode).emit('room:player_disconnected', {
       userId: socket.user.id,
       username: socket.user.username,
     });
+    // Delete room after 60s if still disconnected
+    setTimeout(() => {
+      const r = rooms.get(roomCode);
+      if (r) {
+        const p = r.players.find(p => p.userId === socket.user.id);
+        if (p && !p.socketId) {
+          io.to(roomCode).emit('room:player_left', { userId: socket.user.id, username: socket.user.username });
+          db.prepare("UPDATE games SET status = 'abandoned' WHERE room_code = ?").run(roomCode);
+          rooms.delete(roomCode);
+        }
+      }
+    }, 60000);
+  } else {
+    // Explicit leave or pre-game disconnect
+    io.to(roomCode).emit('room:player_left', { userId: socket.user.id, username: socket.user.username });
     db.prepare("UPDATE games SET status = 'abandoned' WHERE room_code = ?").run(roomCode);
     rooms.delete(roomCode);
   }
-  console.log(`[ws] disconnected: ${socket.user.username}`);
+  console.log(`[ws] ${isExplicitLeave ? 'left' : 'disconnected'}: ${socket.user.username}`);
 }
 
 module.exports = { setupSocket };

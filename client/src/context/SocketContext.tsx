@@ -22,6 +22,11 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     const s = io(serverUrl, {
       auth: { token },
       transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      closeOnBeforeunload: false,
     });
 
     s.on('connect', () => console.log('[socket] connected'));
@@ -30,7 +35,16 @@ export function SocketProvider({ children }: { children: React.ReactNode }) {
     socketRef.current = s;
     setSocket(s);
 
+    // Tab visibility: force reconnect when tab becomes active again
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible' && socketRef.current && !socketRef.current.connected) {
+        socketRef.current.connect();
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibility);
       s.disconnect();
     };
   }, [token]);

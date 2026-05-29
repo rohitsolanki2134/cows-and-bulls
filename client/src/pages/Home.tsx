@@ -21,16 +21,16 @@ export default function Home() {
     <div className="max-w-5xl mx-auto px-4 py-12 space-y-20">
       {/* Hero */}
       <div className="text-center space-y-6">
-        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-dark-card border border-dark-border text-sm text-gray-400 mb-4">
+        <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-white border border-slate-200 text-sm text-slate-600 mb-4">
           <span className="w-1.5 h-1.5 bg-brand-green rounded-full animate-pulse" />
-          Number Guessing · Single & Multiplayer
+          Number Guessing · Single &amp; Multiplayer
         </div>
-        <h1 className="text-5xl sm:text-7xl font-extrabold leading-tight">
+        <h1 className="text-4xl sm:text-7xl font-extrabold leading-tight">
           <span className="text-gradient">Cows</span>
-          <span className="text-gray-600 mx-3">&amp;</span>
+          <span className="text-slate-400 mx-3">&amp;</span>
           <span className="text-gradient">Bulls</span>
         </h1>
-        <p className="text-lg text-gray-400 max-w-xl mx-auto">
+        <p className="text-lg text-slate-600 max-w-xl mx-auto">
           Crack the secret number using logic and deduction. Get hints after every guess — how many cows and bulls?
         </p>
         <div className="flex flex-wrap items-center justify-center gap-3">
@@ -59,26 +59,26 @@ export default function Home() {
           {howToPlay.map(({ label, desc, color }) => (
             <div key={label} className="card p-5 flex items-start gap-4">
               <span className={`text-2xl font-bold ${color} w-24 shrink-0`}>{label}</span>
-              <p className="text-gray-300 mt-1">{desc}</p>
+              <p className="text-slate-600 mt-1">{desc}</p>
             </div>
           ))}
         </div>
 
         {/* Example */}
         <div className="card p-6 space-y-4">
-          <p className="text-gray-400 text-sm uppercase tracking-wide font-semibold">Example</p>
+          <p className="text-slate-500 text-sm uppercase tracking-wide font-semibold">Example</p>
           <div className="flex flex-wrap gap-4 items-center">
             <div className="space-y-1">
-              <p className="text-xs text-gray-500">Secret</p>
+              <p className="text-xs text-slate-400">Secret</p>
               <div className="flex gap-1">
                 {['4','2','7','1'].map((d, i) => (
                   <span key={i} className="digit-box bg-brand-purple/10 border-brand-purple/30 text-brand-purple">{d}</span>
                 ))}
               </div>
             </div>
-            <span className="text-2xl text-gray-600">→</span>
+            <span className="text-2xl text-slate-400">→</span>
             <div className="space-y-1">
-              <p className="text-xs text-gray-500">Guess</p>
+              <p className="text-xs text-slate-400">Guess</p>
               <div className="flex gap-1">
                 {example.map(({ digit, cow, bull }, i) => (
                   <span key={i} className={`digit-box ${
@@ -89,13 +89,13 @@ export default function Home() {
                 ))}
               </div>
             </div>
-            <span className="text-2xl text-gray-600">→</span>
+            <span className="text-2xl text-slate-400">→</span>
             <div className="flex gap-2">
               <span className="badge-cows">1 Cow</span>
               <span className="badge-bulls">2 Bulls</span>
             </div>
           </div>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-slate-500">
             <span className="text-brand-green font-semibold">2</span> is a Cow (right digit, right spot) ·
             <span className="text-brand-amber font-semibold ml-1">1</span> and
             <span className="text-brand-amber font-semibold ml-1">4</span> are Bulls (right digit, wrong spot)
@@ -115,7 +115,7 @@ export default function Home() {
             <div key={title} className={`card ${border} ${bg} p-5 text-center`}>
               <div className="text-4xl mb-2">{emoji}</div>
               <div className={`font-bold text-lg ${color}`}>{title}</div>
-              <div className="text-gray-500 text-sm mt-1">{detail}</div>
+              <div className="text-slate-500 text-sm mt-1">{detail}</div>
             </div>
           ))}
         </div>

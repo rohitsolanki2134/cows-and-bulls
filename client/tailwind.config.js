@@ -9,19 +9,19 @@ export default {
       },
       colors: {
         dark: {
-          bg: '#0a0a14',
-          surface: '#12122a',
-          card: '#1a1a35',
-          border: '#252550',
-          hover: '#20203e',
+          bg: '#f1f5f9',
+          surface: '#f8fafc',
+          card: '#ffffff',
+          border: '#e2e8f0',
+          hover: '#f1f5f9',
         },
         brand: {
           red: '#e94560',
           'red-dim': '#c73a52',
           purple: '#7c4dff',
           'purple-dim': '#6840d9',
-          green: '#00e676',
-          amber: '#ffc107',
+          green: '#059669',
+          amber: '#d97706',
         },
       },
       animation: {
