@@ -127,6 +127,11 @@ function setupSocket(io) {
       const phase = room.started ? 'playing'
         : (player.ready ? 'waiting_opponent' : 'set_secret');
 
+      // Send the player their own secret back (so it re-appears on the playing screen)
+      const mySecretRow = player.ready
+        ? db.prepare('SELECT secret_number FROM game_players WHERE id = ?').get(player.gpId)
+        : null;
+
       socket.emit('room:rejoined', {
         roomCode,
         gameId: room.gameId,
@@ -137,6 +142,7 @@ function setupSocket(io) {
         currentTurn: room.currentTurn,
         myGuesses,
         oppGuesses,
+        mySecret: mySecretRow ? mySecretRow.secret_number : '',
       });
 
       socket.to(roomCode).emit('room:player_reconnected', {
@@ -209,11 +215,15 @@ function setupSocket(io) {
         db.prepare('UPDATE game_players SET won = 1, completed_at = ?, time_taken = ? WHERE id = ?')
           .run(now, now - game.created_at, me.gpId);
 
+        // Fetch winner's own secret so loser can also see what they were trying to crack
+        const meData = db.prepare('SELECT secret_number FROM game_players WHERE id = ?').get(me.gpId);
+
         io.to(roomCode).emit('game:over', {
           winner: { userId: me.userId, username: me.username },
           loser: { userId: opp.userId, username: opp.username },
           winnerAttempts: me.attempts,
-          secret: oppData.secret_number,
+          loserSecret: oppData.secret_number,   // what the winner cracked
+          winnerSecret: meData.secret_number,   // what the loser was trying to crack
           lastGuess: { guess, cows, bulls },
         });
         rooms.delete(roomCode);

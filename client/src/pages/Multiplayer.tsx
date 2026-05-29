@@ -21,7 +21,9 @@ const EMPTY_STATE: MultiplayerState = {
   winner: null,
   loser: null,
   winnerAttempts: 0,
-  revealedSecret: '',
+  mySecret: '',
+  loserSecret: '',
+  winnerSecret: '',
 };
 
 export default function Multiplayer() {
@@ -136,7 +138,8 @@ export default function Multiplayer() {
         winner: data.winner,
         loser: data.loser,
         winnerAttempts: data.winnerAttempts,
-        revealedSecret: data.secret,
+        loserSecret: data.loserSecret,
+        winnerSecret: data.winnerSecret,
         myGuesses: data.winner.userId === user!.id
           ? [...prev.myGuesses, { guess: data.lastGuess.guess, cows: data.lastGuess.cows, bulls: data.lastGuess.bulls, attemptNumber: prev.myGuesses.length + 1 }]
           : prev.myGuesses,
@@ -162,6 +165,7 @@ export default function Multiplayer() {
         currentTurn: data.currentTurn,
         myGuesses: data.myGuesses,
         oppGuesses: data.oppGuesses,
+        mySecret: data.mySecret || prev.mySecret,
       }));
       notify('Reconnected to room!');
     });
@@ -206,6 +210,7 @@ export default function Multiplayer() {
     const v = validateGuess(secretInput, state.config.digits, state.config.allowRepeat, state.config.allowZero);
     if (!v.valid) { setSecretError(v.error!); return; }
     setSecretError('');
+    setState(prev => ({ ...prev, mySecret: secretInput })); // save before server confirms
     socket.emit('game:set_secret', { roomCode: state.roomCode, secret: secretInput });
   };
 
@@ -437,6 +442,19 @@ export default function Multiplayer() {
           </div>
         )}
 
+        {/* Your secret reminder — opponent is trying to guess this */}
+        {state.mySecret && (
+          <div className="card p-4 border-l-4 border-brand-amber flex items-center gap-4 flex-wrap">
+            <div className="text-sm font-semibold text-brand-amber whitespace-nowrap">🔒 Your secret</div>
+            <div className="flex gap-1.5">
+              {state.mySecret.split('').map((d, i) => (
+                <span key={i} className="digit-box w-9 h-9 text-base bg-brand-amber/10 border-brand-amber/40 text-brand-amber">{d}</span>
+              ))}
+            </div>
+            <span className="text-xs text-slate-500 ml-auto">{oppPlayer?.username ?? 'Opponent'} is trying to guess this</span>
+          </div>
+        )}
+
         {/* Guess panels — stack on mobile, side by side on sm+ */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="card p-4 my-guesses-panel">
@@ -476,15 +494,35 @@ export default function Multiplayer() {
               ? `Cracked it in ${state.winnerAttempts} attempts!`
               : `${state.winner?.username} cracked it in ${state.winnerAttempts} attempts.`}
           </p>
-          <div>
-            <p className="text-sm text-slate-400 mb-2">The secret was:</p>
-            <div className="flex justify-center gap-2">
-              {state.revealedSecret.split('').map((d, i) => (
-                <span key={i} className={`digit-box text-2xl w-14 h-14 ${
-                  iWon ? 'bg-brand-green/10 border-brand-green/40 text-brand-green' : 'bg-brand-red/10 border-brand-red/30 text-brand-red'
-                }`}>{d}</span>
-              ))}
+          {/* Both secrets revealed */}
+          <div className="flex justify-center gap-8 flex-wrap">
+            {/* The secret the winner cracked (loser's number) */}
+            <div className="text-center">
+              <p className="text-xs text-slate-500 mb-2">
+                {iWon ? '✅ Secret you cracked' : `❌ Your secret (${state.winner?.username} cracked it)`}
+              </p>
+              <div className="flex gap-1.5 justify-center">
+                {state.loserSecret.split('').map((d, i) => (
+                  <span key={i} className={`digit-box text-xl w-12 h-12 ${
+                    iWon ? 'bg-brand-green/10 border-brand-green/40 text-brand-green'
+                         : 'bg-brand-red/10 border-brand-red/30 text-brand-red'
+                  }`}>{d}</span>
+                ))}
+              </div>
             </div>
+            {/* The winner's secret (what the loser was trying to crack) */}
+            {state.winnerSecret && (
+              <div className="text-center">
+                <p className="text-xs text-slate-500 mb-2">
+                  {iWon ? '🔒 Your secret (unguessed)' : `🔓 ${state.winner?.username}'s secret`}
+                </p>
+                <div className="flex gap-1.5 justify-center">
+                  {state.winnerSecret.split('').map((d, i) => (
+                    <span key={i} className="digit-box text-xl w-12 h-12 bg-brand-purple/10 border-brand-purple/40 text-brand-purple">{d}</span>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex justify-center gap-3 pt-2">
             <button onClick={() => setState(EMPTY_STATE)} className="btn-primary">Play Again</button>

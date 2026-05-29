@@ -411,6 +411,19 @@ export default function SinglePlayer() {
         </div>
       )}
 
+      {/* vs AI: show player's own secret so they remember what they're defending */}
+      {isVsAI && userSecretRef.current && (
+        <div className="card p-4 border-l-4 border-brand-amber flex items-center gap-4 flex-wrap">
+          <div className="text-sm font-semibold text-brand-amber whitespace-nowrap">🔒 Your secret</div>
+          <div className="flex gap-1.5">
+            {userSecretRef.current.split('').map((d, i) => (
+              <span key={i} className="digit-box w-9 h-9 text-base bg-brand-amber/10 border-brand-amber/40 text-brand-amber">{d}</span>
+            ))}
+          </div>
+          <span className="text-xs text-slate-500 ml-auto">AI is trying to guess this</span>
+        </div>
+      )}
+
       {/* Guess input */}
       <div className="card p-5">
         <h2 className="text-sm font-semibold text-gray-400 uppercase tracking-wide mb-4">

@@ -73,5 +73,7 @@ export interface MultiplayerState {
   winner: MultiplayerPlayer | null;
   loser: MultiplayerPlayer | null;
   winnerAttempts: number;
-  revealedSecret: string;
+  mySecret: string;        // player's own secret (what opponent is guessing)
+  loserSecret: string;     // revealed on game over: what the winner cracked
+  winnerSecret: string;    // revealed on game over: what the loser was trying to crack
 }

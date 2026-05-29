@@ -5,7 +5,7 @@ import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Login from './pages/Login';
 import SinglePlayer from './pages/SinglePlayer';
-import Multiplayer from './pages/Multiplayer';
+import Multiplayer from './pages/MultiPlayer';
 import Leaderboard from './pages/Leaderboard';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
