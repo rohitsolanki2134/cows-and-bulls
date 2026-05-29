@@ -222,8 +222,8 @@ function setupSocket(io) {
           winner: { userId: me.userId, username: me.username },
           loser: { userId: opp.userId, username: opp.username },
           winnerAttempts: me.attempts,
-          loserSecret: oppData.secret_number,   // what the winner cracked
-          winnerSecret: meData.secret_number,   // what the loser was trying to crack
+          loserSecret: oppData?.secret_number || '',   // what the winner cracked
+          winnerSecret: meData?.secret_number || '',   // what the loser was trying to crack
           lastGuess: { guess, cows, bulls },
         });
         rooms.delete(roomCode);
