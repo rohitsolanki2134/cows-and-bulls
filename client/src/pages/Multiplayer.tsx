@@ -59,19 +59,25 @@ export default function Multiplayer() {
     }
   }, [state.roomCode, state.phase]);
 
-  // Auto-rejoin on socket connect/reconnect
+  // Auto-rejoin on socket connect/reconnect.
+  // Fires immediately if the socket is already connected on mount (e.g. after a page refresh),
+  // and again whenever the socket reconnects after a drop.
   useEffect(() => {
     if (!socket) return;
     const tryRejoin = () => {
       const saved = sessionStorage.getItem('mp_room');
-      if (saved && state.phase === 'lobby') {
+      if (!saved) return;
+      try {
         const { roomCode } = JSON.parse(saved);
         socket.emit('room:rejoin', { roomCode });
+      } catch {
+        sessionStorage.removeItem('mp_room');
       }
     };
-    socket.on('connect', tryRejoin);
+    if (socket.connected) tryRejoin();   // already connected on mount → try now
+    socket.on('connect', tryRejoin);     // reconnect after drop → try again
     return () => { socket.off('connect', tryRejoin); };
-  }, [socket, state.phase]);
+  }, [socket]); // intentionally omit state.phase — avoid stale closure
 
   useEffect(() => {
     if (!socket) return;
@@ -132,6 +138,7 @@ export default function Multiplayer() {
 
     socket.on('game:over', (data) => {
       setGuessLoading(false);
+      sessionStorage.removeItem('mp_room'); // room is gone after game ends
       const iAmWinner = data.winner.userId === user!.id;
       const winGuess = { guess: data.lastGuess.guess, cows: data.lastGuess.cows, bulls: data.lastGuess.bulls, attemptNumber: iAmWinner ? 0 : 0 };
       setState(prev => ({
@@ -156,7 +163,8 @@ export default function Multiplayer() {
 
     socket.on('room:player_left', ({ username }) => {
       notify(`${username} left the room`);
-      setState(prev => ({ ...prev, phase: 'lobby' }));
+      sessionStorage.removeItem('mp_room');
+      setState(EMPTY_STATE);
     });
 
     // Reconnection handlers
@@ -343,6 +351,19 @@ export default function Multiplayer() {
           </div>
         )}
 
+        {/* Show the player's own secret once they've set it */}
+        {state.mySecret && (
+          <div className="card p-4 border-l-4 border-brand-amber flex items-center gap-4 flex-wrap">
+            <div className="text-sm font-semibold text-brand-amber whitespace-nowrap">🔒 Your secret</div>
+            <div className="flex gap-1.5">
+              {state.mySecret.split('').map((d, i) => (
+                <span key={i} className="digit-box w-9 h-9 text-base bg-brand-amber/10 border-brand-amber/40 text-brand-amber">{d}</span>
+              ))}
+            </div>
+            <span className="text-xs text-slate-500 ml-auto">Opponent will try to guess this</span>
+          </div>
+        )}
+
         {/* Players */}
         <div className="card p-4 flex gap-3">
           {state.players.map(p => (
@@ -509,7 +530,7 @@ export default function Multiplayer() {
                 {iWon ? '✅ Secret you cracked' : `❌ Your secret (${state.winner?.username} cracked it)`}
               </p>
               <div className="flex gap-1.5 justify-center">
-                {state.loserSecret.split('').map((d, i) => (
+                {(state.loserSecret || '').split('').map((d, i) => (
                   <span key={i} className={`digit-box text-xl w-12 h-12 ${
                     iWon ? 'bg-brand-green/10 border-brand-green/40 text-brand-green'
                          : 'bg-brand-red/10 border-brand-red/30 text-brand-red'
@@ -524,7 +545,7 @@ export default function Multiplayer() {
                   {iWon ? '🔒 Your secret (unguessed)' : `🔓 ${state.winner?.username}'s secret`}
                 </p>
                 <div className="flex gap-1.5 justify-center">
-                  {state.winnerSecret.split('').map((d, i) => (
+                  {(state.winnerSecret || '').split('').map((d, i) => (
                     <span key={i} className="digit-box text-xl w-12 h-12 bg-brand-purple/10 border-brand-purple/40 text-brand-purple">{d}</span>
                   ))}
                 </div>

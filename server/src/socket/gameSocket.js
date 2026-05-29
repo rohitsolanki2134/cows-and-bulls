@@ -125,7 +125,8 @@ function setupSocket(io) {
       ).all(opp.gpId).map(g => ({ guess: g.guess, cows: g.cows, bulls: g.bulls, attemptNumber: g.attempt_number })) : [];
 
       const phase = room.started ? 'playing'
-        : (player.ready ? 'waiting_opponent' : 'set_secret');
+        : room.players.length < 2 ? 'room_created'           // still waiting for 2nd player
+        : (player.ready ? 'waiting_opponent' : 'set_secret'); // both joined, secret phase
 
       // Send the player their own secret back (so it re-appears on the playing screen)
       const mySecretRow = player.ready
@@ -202,6 +203,9 @@ function setupSocket(io) {
       }
 
       const oppData = db.prepare('SELECT * FROM game_players WHERE id = ?').get(opp.gpId);
+      if (!oppData || !oppData.secret_number) {
+        return socket.emit('game:error', { message: 'Opponent secret not found — game may be corrupted' });
+      }
       const { cows, bulls } = calculateCowsBulls(oppData.secret_number, guess);
       me.attempts++;
 
@@ -252,8 +256,9 @@ function handleLeave(socket, io, isExplicitLeave = false) {
   const room = rooms.get(roomCode);
   if (!room) return;
 
-  if (!isExplicitLeave && room.started) {
-    // Grace period: mark disconnected, don't delete room yet
+  if (!isExplicitLeave) {
+    // Grace period for ALL disconnects (whether game is in progress or in lobby/setup).
+    // This lets players rejoin after a refresh, network blip, or tab switch.
     const player = room.players.find(p => p.userId === socket.user.id);
     if (player) {
       player.socketId = null;
@@ -263,7 +268,7 @@ function handleLeave(socket, io, isExplicitLeave = false) {
       userId: socket.user.id,
       username: socket.user.username,
     });
-    // Delete room after 60s if still disconnected
+    // Abandon room after 60s if player still hasn't reconnected
     setTimeout(() => {
       const r = rooms.get(roomCode);
       if (r) {
@@ -276,7 +281,7 @@ function handleLeave(socket, io, isExplicitLeave = false) {
       }
     }, 60000);
   } else {
-    // Explicit leave or pre-game disconnect
+    // Explicit leave (user clicked "Leave Room" / "Forfeit"): immediate cleanup
     io.to(roomCode).emit('room:player_left', { userId: socket.user.id, username: socket.user.username });
     db.prepare("UPDATE games SET status = 'abandoned' WHERE room_code = ?").run(roomCode);
     rooms.delete(roomCode);
