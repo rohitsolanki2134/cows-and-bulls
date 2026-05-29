@@ -132,19 +132,26 @@ export default function Multiplayer() {
 
     socket.on('game:over', (data) => {
       setGuessLoading(false);
+      const iAmWinner = data.winner.userId === user!.id;
+      const winGuess = { guess: data.lastGuess.guess, cows: data.lastGuess.cows, bulls: data.lastGuess.bulls, attemptNumber: iAmWinner ? 0 : 0 };
       setState(prev => ({
         ...prev,
         phase: 'game_over',
         winner: data.winner,
         loser: data.loser,
         winnerAttempts: data.winnerAttempts,
-        loserSecret: data.loserSecret,
-        winnerSecret: data.winnerSecret,
-        myGuesses: data.winner.userId === user!.id
-          ? [...prev.myGuesses, { guess: data.lastGuess.guess, cows: data.lastGuess.cows, bulls: data.lastGuess.bulls, attemptNumber: prev.myGuesses.length + 1 }]
+        loserSecret:  data.loserSecret  || '',
+        winnerSecret: data.winnerSecret || '',
+        // Winner: append winning guess to MY panel
+        myGuesses: iAmWinner
+          ? [...prev.myGuesses, { ...winGuess, attemptNumber: prev.myGuesses.length + 1 }]
           : prev.myGuesses,
+        // Loser: append opponent's winning guess to OPP panel
+        oppGuesses: !iAmWinner
+          ? [...prev.oppGuesses, { ...winGuess, attemptNumber: prev.oppGuesses.length + 1 }]
+          : prev.oppGuesses,
       }));
-      playBeep(data.winner.userId === user!.id ? 'win' : 'error');
+      playBeep(iAmWinner ? 'win' : 'error');
     });
 
     socket.on('room:player_left', ({ username }) => {
@@ -395,6 +402,19 @@ export default function Multiplayer() {
     const oppPlayer = state.players.find(p => p.userId !== user?.id);
     return (
       <div className="max-w-3xl mx-auto px-4 py-6 space-y-5">
+        {/* Your secret reminder — pinned at TOP so it's always visible */}
+        {state.mySecret && (
+          <div className="card p-4 border-l-4 border-brand-amber flex items-center gap-4 flex-wrap">
+            <div className="text-sm font-semibold text-brand-amber whitespace-nowrap">🔒 Your secret</div>
+            <div className="flex gap-1.5">
+              {state.mySecret.split('').map((d, i) => (
+                <span key={i} className="digit-box w-9 h-9 text-base bg-brand-amber/10 border-brand-amber/40 text-brand-amber">{d}</span>
+              ))}
+            </div>
+            <span className="text-xs text-slate-500 ml-auto">{oppPlayer?.username ?? 'Opponent'} is trying to guess this</span>
+          </div>
+        )}
+
         {/* Status bar */}
         <div className={`flex flex-wrap items-center justify-between gap-2 px-4 py-3 rounded-xl border ${
           isMyTurn ? 'bg-brand-purple/10 border-brand-purple/30' : 'bg-white border-slate-200'
@@ -439,19 +459,6 @@ export default function Multiplayer() {
               <span className="w-2 h-2 bg-brand-amber rounded-full animate-bounce [animation-delay:0.3s]" />
               <span className="ml-2 text-sm">{oppPlayer?.username} is thinking...</span>
             </div>
-          </div>
-        )}
-
-        {/* Your secret reminder — opponent is trying to guess this */}
-        {state.mySecret && (
-          <div className="card p-4 border-l-4 border-brand-amber flex items-center gap-4 flex-wrap">
-            <div className="text-sm font-semibold text-brand-amber whitespace-nowrap">🔒 Your secret</div>
-            <div className="flex gap-1.5">
-              {state.mySecret.split('').map((d, i) => (
-                <span key={i} className="digit-box w-9 h-9 text-base bg-brand-amber/10 border-brand-amber/40 text-brand-amber">{d}</span>
-              ))}
-            </div>
-            <span className="text-xs text-slate-500 ml-auto">{oppPlayer?.username ?? 'Opponent'} is trying to guess this</span>
           </div>
         )}
 
